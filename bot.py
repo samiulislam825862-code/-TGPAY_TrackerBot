@@ -29,6 +29,7 @@ stats = {
 }
 
 invite_stats = {}
+
 wallet_answers = {}
 
 WALLET_OPTIONS = [
@@ -37,28 +38,45 @@ WALLET_OPTIONS = [
     ("Nagad Personal Wallets", "Nagad個人錢包"),
     ("bKash Personal Wallets", "bKash個人錢包"),
 ]
-async def wallet_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+
+async def wallet_question(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     keyboard = [
-        [InlineKeyboardButton(
-            f"{english} — {chinese}",
-            callback_data=f"wallet_{i}"
-        )]
+        [
+            InlineKeyboardButton(
+                english,
+                callback_data=f"wallet_{i}",
+            )
+        ]
         for i, (english, chinese) in enumerate(WALLET_OPTIONS)
     ]
 
     await update.message.reply_text(
         "❓ What kind of wallet do you have?\n"
         "你用的是哪種錢包？",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
-async def wallet_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def wallet_answer(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     query = update.callback_query
+
     await query.answer()
 
-    index = int(query.data.split("_")[1])
-    english, chinese = WALLET_OPTIONS[index]
+    try:
+        index = int(query.data.split("_")[1])
+        english, chinese = WALLET_OPTIONS[index]
+    except (ValueError, IndexError):
+        await query.edit_message_text(
+            "❌ Invalid wallet selection."
+        )
+        return
 
     user = query.from_user
 
@@ -68,53 +86,39 @@ async def wallet_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "wallet": english,
         "wallet_chinese": chinese,
     }
+
     await query.edit_message_text(
         "✅ Selection recorded.\n"
         "已記錄您的選擇。\n\n"
         f"💳 {english}\n"
-        f"💳 {chinese}\n\n"
-      keyboard = [
-    [
-        InlineKeyboardButton(
-            "Nagad Agent",
-            callback_data="wallet_0"
-        )
-    ],
-    [
-        InlineKeyboardButton(
-            "bKash Agent",
-            callback_data="wallet_1"
-        )
-    ],
-    [
-        InlineKeyboardButton(
-            "Nagad Personal Wallets",
-            callback_data="wallet_2"
-        )
-    ],
-    [
-        InlineKeyboardButton(
-            "bKash Personal Wallets",
-            callback_data="wallet_3"
-        )
-    ]
-]
+        f"💳 {chinese}"
+    )
 
-await query.message.reply_text(
-    "❓ What kind of wallet do you have?\n"
-    "你用的是哪種錢包？",
-    reply_markup=InlineKeyboardMarkup(keyboard)
-)
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(
+        "WALLET: %s (@%s) selected %s",
+        user.full_name,
+        user.username,
+        english,
+    )
+
+
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     await update.message.reply_text(
         "🤖 TGPAY Tracker Bot\n\n"
         "আমি আপনার Telegram channel-এর activity tracking করছি.\n\n"
+        "/wallet - Wallet নির্বাচন করুন\n"
         "/invite - Tracking invite link তৈরি করুন\n"
         "/stats - Statistics দেখুন"
     )
 
 
-async def create_invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def create_invite(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     try:
         user = update.effective_user
 
@@ -146,7 +150,10 @@ async def create_invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def member_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def member_update(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     cm = update.chat_member
 
     if not cm:
@@ -185,6 +192,7 @@ async def member_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user.full_name,
                 link,
             )
+
         else:
             logger.info(
                 "JOIN: %s via direct/unknown link",
@@ -200,7 +208,10 @@ async def member_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def channel_post(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     if update.channel_post:
         stats["posts"] += 1
 
@@ -210,17 +221,24 @@ async def channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_stats(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     await update.message.reply_text(
         "📊 TGPAY Tracker Statistics\n\n"
         f"📝 Channel posts detected: {stats['posts']}\n"
         f"👤 New joins detected: {stats['joins']}\n"
         f"🚪 Leaves detected: {stats['leaves']}\n"
-        f"🔗 Tracking links: {len(invite_stats)}"
+        f"🔗 Tracking links: {len(invite_stats)}\n"
+        f"💳 Wallet selections: {len(wallet_answers)}"
     )
 
 
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+async def error_handler(
+    update: object,
+    context: ContextTypes.DEFAULT_TYPE,
+):
     logger.error(
         "Update caused error: %s",
         context.error,
@@ -231,14 +249,30 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("wallet", wallet_question))
-    app.add_handler(CommandHandler("invite", create_invite))
-    app.add_handler(CommandHandler("stats", show_stats))
-    
-    app.add_handler(CallbackQueryHandler(wallet_answer, pattern="^wallet_"))
+    app.add_handler(
+        CommandHandler("start", start)
+    )
 
-   app.add_handler(
+    app.add_handler(
+        CommandHandler("wallet", wallet_question)
+    )
+
+    app.add_handler(
+        CommandHandler("invite", create_invite)
+    )
+
+    app.add_handler(
+        CommandHandler("stats", show_stats)
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            wallet_answer,
+            pattern="^wallet_",
+        )
+    )
+
+    app.add_handler(
         ChatMemberHandler(
             member_update,
             ChatMemberHandler.CHAT_MEMBER,
@@ -255,12 +289,14 @@ def main():
     app.add_error_handler(error_handler)
 
     app.run_polling(
-    allowed_updates=[
-        "message",
-        "channel_post",
-        "chat_member",
-        "callback_query",
-    ]
-)
+        allowed_updates=[
+            "message",
+            "channel_post",
+            "chat_member",
+            "callback_query",
+        ]
+    )
+
+
 if __name__ == "__main__":
     main()
