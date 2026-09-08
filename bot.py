@@ -73,32 +73,38 @@ async def wallet_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "已記錄您的選擇。\n\n"
         f"💳 {english}\n"
         f"💳 {chinese}\n\n"
-        "❓ Why should you work for our company?\n"
-        "為什麼要加入我們公司？"
-    )
-
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "💰 High Commission and Safe Transactions",
-                callback_data="reason_0"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "💰 高額佣金和安全交易",
-                callback_data="reason_1"
-            )
-        ]
+      keyboard = [
+    [
+        InlineKeyboardButton(
+            "Nagad Agent",
+            callback_data="wallet_0"
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            "bKash Agent",
+            callback_data="wallet_1"
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            "Nagad Personal Wallets",
+            callback_data="wallet_2"
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            "bKash Personal Wallets",
+            callback_data="wallet_3"
+        )
     ]
+]
 
-    await query.message.reply_text(
-        "❓ Why should you work for our company?\n"
-        "為什麼要加入我們公司？",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-    )
+await query.message.reply_text(
+    "❓ What kind of wallet do you have?\n"
+    "你用的是哪種錢包？",
+    reply_markup=InlineKeyboardMarkup(keyboard)
+)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 TGPAY Tracker Bot\n\n"
@@ -249,13 +255,12 @@ def main():
     app.add_error_handler(error_handler)
 
     app.run_polling(
-        allowed_updates=[
-            "message",
-            "channel_post",
-            "chat_member",
-        ]
-    )
-
-
+    allowed_updates=[
+        "message",
+        "channel_post",
+        "chat_member",
+        "callback_query",
+    ]
+)
 if __name__ == "__main__":
     main()
