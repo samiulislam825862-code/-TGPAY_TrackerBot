@@ -1,13 +1,14 @@
 import os
 import logging
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
     ChatMemberHandler,
     ContextTypes,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
 )
 
@@ -28,8 +29,77 @@ stats = {
 }
 
 invite_stats = {}
+wallet_answers = {}
+
+WALLET_OPTIONS = [
+    ("Nagad Agent", "納加德特工"),
+    ("bKash Agent", "bKash代理"),
+    ("Nagad Personal Wallets", "Nagad個人錢包"),
+    ("bKash Personal Wallets", "bKash個人錢包"),
+]
+async def wallet_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton(
+            f"{english} — {chinese}",
+            callback_data=f"wallet_{i}"
+        )]
+        for i, (english, chinese) in enumerate(WALLET_OPTIONS)
+    ]
+
+    await update.message.reply_text(
+        "❓ What kind of wallet do you have?\n"
+        "你用的是哪種錢包？",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 
+async def wallet_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    index = int(query.data.split("_")[1])
+    english, chinese = WALLET_OPTIONS[index]
+
+    user = query.from_user
+
+    wallet_answers[user.id] = {
+        "name": user.full_name,
+        "username": user.username,
+        "wallet": english,
+        "wallet_chinese": chinese,
+    }
+
+        await query.edit_message_text(
+        "✅ Selection recorded.\n"
+        "已記錄您的選擇。\n\n"
+        f"💳 {english}\n"
+        f"💳 {chinese}\n\n"
+        "❓ Why should you work for our company?\n"
+        "為什麼要加入我們公司？"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "💰 High Commission and Safe Transactions",
+                callback_data="reason_0"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💰 高額佣金和安全交易",
+                callback_data="reason_1"
+            )
+        ]
+    ]
+
+    await query.message.reply_text(
+        "❓ Why should you work for our company?\n"
+        "為什麼要加入我們公司？",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+    )
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 TGPAY Tracker Bot\n\n"
@@ -157,10 +227,13 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("wallet", wallet_question))
     app.add_handler(CommandHandler("invite", create_invite))
     app.add_handler(CommandHandler("stats", show_stats))
+    
+    app.add_handler(CallbackQueryHandler(wallet_answer, pattern="^wallet_"))
 
-    app.add_handler(
+   app.add_handler(
         ChatMemberHandler(
             member_update,
             ChatMemberHandler.CHAT_MEMBER,
