@@ -68,8 +68,7 @@ async def wallet_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "wallet": english,
         "wallet_chinese": chinese,
     }
-
-        await query.edit_message_text(
+    await query.edit_message_text(
         "✅ Selection recorded.\n"
         "已記錄您的選擇。\n\n"
         f"💳 {english}\n"
